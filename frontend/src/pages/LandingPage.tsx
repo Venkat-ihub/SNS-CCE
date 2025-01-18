@@ -1,5 +1,5 @@
 import React, { FC } from "react";
-import { styles } from "../components/common/constants";
+import { buttonStyles } from "../components/common/constants";
 
 //img imports
 import gridImg from '../assets/images/Grid.png'
@@ -17,7 +17,7 @@ function NavBar(): JSX.Element {
       </div>
 
       <div className="w-1/4 flex justify-end">
-        <button className={styles.buttonStyle}> Log in </button>
+        <button className={buttonStyles.themeButton}> Log in </button>
       </div>
     </nav>
   );
@@ -34,7 +34,7 @@ function Header(): JSX.Element {
         <p className="my-3 text-themeYellow">
           Turning Aspirants into Achievments
         </p>
-        <p className={styles.buttonStyle}> Log in </p>
+        <p className={buttonStyles.themeButton}> Log in </p>
       </div>
     </header>
   );
