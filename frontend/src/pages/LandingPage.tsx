@@ -42,9 +42,15 @@ function Header(): JSX.Element {
 
 function About(): JSX.Element {
   return (
-    <section className="flex flex-col items-center w-[80%] justify-self-center text-justify">
+    <section className="flex flex-col items-center justify-self-center text-justify relative overflow-hidden">
+      {/* bottom left image */}
+      <img src={gridImg} alt="" className="absolute translate-x-[-80%] object-contain w-[800px] aspect-video"/>
+
+      {/* bottom right image */}
+      <img src={gridImg} alt="" className="absolute translate-x-[80%] object-contain w-[800px] aspect-video"/>
+
       <p className="text-4xl"> About CCE </p>
-      <p className="my-5 text-sm">
+      <p className="my-5 text-sm w-[90%]">
         At SNS Institutions, we constantly endeavor to identify the potential
         opportunities for our students to elevate their personality and
         professional competence, which in turn will enhance their socio-economic
