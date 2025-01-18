@@ -83,3 +83,59 @@ def job_detail(request, pk):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@csrf_exempt
+@api_view(["GET"])
+def job_overview(request):
+    try:
+        # Fetch only specific fields using MongoDB projection
+        jobs = list(
+            jobs_collection.find(
+                {},
+                {
+                    "title": 1,
+                    "department": 1,
+                    "location": 1,
+                    "description": 1,
+                    "application_link": 1,
+                    "_id": 1,
+                },
+            )
+        )
+
+        # Convert ObjectId to string for JSON serialization
+        for job in jobs:
+            job["_id"] = str(job["_id"])
+
+        return Response(jobs)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@csrf_exempt
+@api_view(["GET"])
+def job_overview_detail(request, pk):
+    try:
+        # Fetch specific fields for a single job using MongoDB projection
+        job = jobs_collection.find_one(
+            {"_id": ObjectId(pk)},
+            {
+                "title": 1,
+                "department": 1,
+                "location": 1,
+                "description": 1,
+                "application_link": 1,
+                "_id": 1,
+            },
+        )
+
+        if not job:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        # Convert ObjectId to string for JSON serialization
+        job["_id"] = str(job["_id"])
+
+        return Response(job)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
