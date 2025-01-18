@@ -9,19 +9,19 @@ logger = logging.getLogger(__name__)
 
 try:
     # MongoDB Atlas URI
-    uri = "mongodb+srv://prakashbalan555:aicourse@ai-course.si9g6.mongodb.net/"
-    
+    uri = "mongodb+srv://venkatbihub:venkatbihub@cluster0.n17ea.mongodb.net/"
+
     logger.info("Attempting to connect to MongoDB Atlas...")
-    
+
     # Create a new client and connect to the server
-    client = MongoClient(uri, server_api=ServerApi('1'))
-    
+    client = MongoClient(uri, server_api=ServerApi("1"))
+
     # Send a ping to confirm a successful connection
-    client.admin.command('ping')
+    client.admin.command("ping")
     logger.info("Successfully connected to MongoDB Atlas!")
-    
+
     # Get database and collections
-    db = client["login_system"]
+    db = client["CCE"]
     users_collection = db["users"]
     admins_collection = db["admins"]
 
@@ -31,4 +31,4 @@ try:
 
 except Exception as e:
     logger.error("Error connecting to MongoDB Atlas: %s", str(e), exc_info=True)
-    raise 
+    raise
