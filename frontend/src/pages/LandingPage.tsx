@@ -1,4 +1,5 @@
 import React, { FC } from "react";
+import Footer from '../components/common/Footer';
 import { buttonStyles } from "../components/common/constants";
 
 //img imports
@@ -26,7 +27,7 @@ function NavBar(): JSX.Element {
 function Header(): JSX.Element {
   return (
     <header className="flex flex-col items-center py-24 relative justify-center">
-        <img src={gridImg} alt="" className="absolute object-contain w-[800px] aspect-video"/>
+      <img src={gridImg} alt="" className="absolute object-contain w-[800px] aspect-video" />
       <div className="flex flex-col items-center">
         <p className="text-5xl"> Center for </p>
         <p className="text-5xl"> Competitive Exams </p>
@@ -44,10 +45,10 @@ function About(): JSX.Element {
   return (
     <section className="flex flex-col items-center justify-self-center text-justify relative overflow-hidden">
       {/* bottom left image */}
-      <img src={gridImg} alt="" className="absolute translate-x-[-80%] object-contain w-[800px] aspect-video"/>
+      <img src={gridImg} alt="" className="absolute translate-x-[-80%] object-contain w-[800px] aspect-video" />
 
       {/* bottom right image */}
-      <img src={gridImg} alt="" className="absolute translate-x-[80%] object-contain w-[800px] aspect-video"/>
+      <img src={gridImg} alt="" className="absolute translate-x-[80%] object-contain w-[800px] aspect-video" />
 
       <p className="text-4xl"> About CCE </p>
       <p className="my-5 text-sm w-[90%]">
@@ -83,6 +84,7 @@ function LandingPage(): JSX.Element {
       <NavBar />
       <Header />
       <About />
+      <Footer />
     </div>
   );
 }

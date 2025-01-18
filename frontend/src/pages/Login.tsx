@@ -21,12 +21,11 @@ const Login: React.FC = () => {
     try {
 
       const response = await axios.post('http://localhost:8000/api/login/', { email: email, password: password, user_type: type });
-
       console.log('Response:', response.data);
-
-      localStorage.setItem('userInfo', response.data)
-
-      navigate('/login')
+    
+      localStorage.setItem('userInfo', JSON.stringify(response.data))
+      
+      navigate('/')
 
     } catch (error) {
       if (axios.isAxiosError(error)) {
@@ -37,8 +36,6 @@ const Login: React.FC = () => {
       }
     }
   };
-
-
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
@@ -74,8 +71,8 @@ const Login: React.FC = () => {
                 required
                 className="mt-1 block w-full font-[500] px-3 py-3 placeholder-gray-400 border border-black rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
-              <button className='absolute right-5' onClick={() => setShowPassword(!showPassword)}>
-                <i className={showPassword ? "fas fa-eye-slash" : "fas fa-eye"}></i>
+              <button type='button' className='absolute right-5' onClick={() => setShowPassword(!showPassword)}>
+                <i className={showPassword ? "bi bi-eye-slash-fill" : "bi bi-eye-fill"}></i>
               </button>
             </div>
             <div className="text-end">
