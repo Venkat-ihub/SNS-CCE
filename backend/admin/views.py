@@ -50,54 +50,61 @@ def job_list(request):
 
 
 @csrf_exempt
-@api_view(["GET"])
-def job_detail(request, pk):
+@api_view(["GET", "PUT", "DELETE"])
+def job_detail_admin(request, pk):
     try:
-        # First fetch the job
         job = jobs_collection.find_one({"_id": ObjectId(pk)})
         if not job:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-        # Get user_id from query params
-        user_id = request.query_params.get("user_id")
+        if request.method == "GET":
+            job["_id"] = str(job["_id"])
+            return Response(job)
 
-        if user_id:
-            # Initialize viewed_by array and views count if they don't exist
-            update_fields = {}
-            if "viewed_by" not in job:
-                update_fields["viewed_by"] = []
-            if "views" not in job:
-                update_fields["views"] = 0
+        elif request.method == "PUT":
+            update_data = request.data
+            # Remove _id if present in update data
+            if "_id" in update_data:
+                del update_data["_id"]
 
-            # If there are fields to initialize, update them first
-            if update_fields:
-                jobs_collection.update_one(
-                    {"_id": ObjectId(pk)}, {"$set": update_fields}
-                )
-                job = jobs_collection.find_one({"_id": ObjectId(pk)})
+            # Update the job
+            jobs_collection.update_one({"_id": ObjectId(pk)}, {"$set": update_data})
 
-            # Check if user hasn't viewed this job before
-            if "viewed_by" not in job or user_id not in job["viewed_by"]:
-                jobs_collection.update_one(
-                    {"_id": ObjectId(pk)},
-                    {"$inc": {"views": 1}, "$push": {"viewed_by": user_id}},
-                )
-                # Fetch the updated job
-                job = jobs_collection.find_one({"_id": ObjectId(pk)})
+            # Fetch and return updated job
+            updated_job = jobs_collection.find_one({"_id": ObjectId(pk)})
+            updated_job["_id"] = str(updated_job["_id"])
+            return Response(updated_job)
 
-        # Ensure views field exists in response
-        if "views" not in job:
-            job["views"] = 0
+        elif request.method == "DELETE":
+            jobs_collection.delete_one({"_id": ObjectId(pk)})
+            return Response(status=status.HTTP_204_NO_CONTENT)
 
-        job["_id"] = str(job["_id"])
-        # Remove viewed_by array from response if exists
-        if "viewed_by" in job:
-            del job["viewed_by"]
-
-        return Response(job)
     except Exception as e:
-        print(f"Error in job_detail: {str(e)}")  # Add debug print
-        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        print(f"Error in job_detail_admin: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@csrf_exempt
+@api_view(["POST"])
+def create_job(request):
+    try:
+        job_data = request.data
+        # Add created_at and updated_at fields
+        job_data["created_at"] = datetime.now()
+        job_data["updated_at"] = datetime.now()
+        job_data["views"] = 0
+        job_data["status"] = "live"
+
+        # Insert the job
+        result = jobs_collection.insert_one(job_data)
+
+        # Fetch and return the created job
+        created_job = jobs_collection.find_one({"_id": result.inserted_id})
+        created_job["_id"] = str(created_job["_id"])
+        return Response(created_job, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        print(f"Error creating job: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @csrf_exempt
@@ -119,14 +126,12 @@ def job_overview(request):
 
         if status_filter != "all":
             if status_filter == "live":
-                # For live jobs, either end_date doesn't exist or is in the future
                 query["$or"] = [
                     {"end_date": {"$exists": False}},
                     {"end_date": {"$gt": current_date.strftime("%Y-%m-%d")}},
                     {"status": "live"},
                 ]
             elif status_filter == "expired":
-                # For expired jobs, either end_date is in the past or status is expired
                 query["$or"] = [
                     {"end_date": {"$lt": current_date.strftime("%Y-%m-%d")}},
                     {"status": "expired"},
@@ -134,31 +139,8 @@ def job_overview(request):
 
         print("MongoDB query:", query)
 
-        # Fetch all jobs first to debug
-        all_jobs = list(jobs_collection.find({}))
-        print("All jobs in DB:", len(all_jobs))
-        print("Sample job:", all_jobs[0] if all_jobs else "No jobs found")
-
-        # Fetch filtered jobs
-        jobs = list(
-            jobs_collection.find(
-                query,
-                {
-                    "title": 1,
-                    "department": 1,
-                    "category": 1,
-                    "location": 1,
-                    "description": 1,
-                    "application_link": 1,
-                    "views": 1,
-                    "end_date": 1,
-                    "status": 1,
-                    "_id": 1,
-                },
-            )
-        )
-
-        print("Number of jobs found after filter:", len(jobs))
+        # Fetch all jobs
+        jobs = list(jobs_collection.find(query))
 
         # Process jobs
         for job in jobs:
@@ -172,11 +154,8 @@ def job_overview(request):
                     or datetime.strptime(job["end_date"], "%Y-%m-%d") >= current_date
                     else "expired"
                 )
-            # Map category to department if needed
             if "department" not in job and "category" in job:
                 job["department"] = job["category"]
-
-        print("Final processed jobs:", jobs)
 
         return Response(jobs)
     except Exception as e:
