@@ -1,5 +1,6 @@
 import React, { FC } from "react";
-import { styles } from "../components/common/constants";
+import Footer from '../components/common/Footer';
+import { ButtonStyles } from "../components/common/constants";
 
 //img imports
 import gridImg from '../assets/images/Grid.png'
@@ -17,7 +18,7 @@ function NavBar(): JSX.Element {
       </div>
 
       <div className="w-1/4 flex justify-end">
-        <button className={styles.buttonStyle}> Log in </button>
+        <button className={ButtonStyles.themeButton}> Log in </button>
       </div>
     </nav>
   );
@@ -26,7 +27,7 @@ function NavBar(): JSX.Element {
 function Header(): JSX.Element {
   return (
     <header className="flex flex-col items-center py-24 relative justify-center">
-        <img src={gridImg} alt="" className="absolute object-contain w-[800px] aspect-video"/>
+      <img src={gridImg} alt="" className="absolute object-contain w-[800px] aspect-video" />
       <div className="flex flex-col items-center">
         <p className="text-5xl"> Center for </p>
         <p className="text-5xl"> Competitive Exams </p>
@@ -34,7 +35,7 @@ function Header(): JSX.Element {
         <p className="my-3 text-themeYellow">
           Turning Aspirants into Achievments
         </p>
-        <p className={styles.buttonStyle}> Log in </p>
+        <p className={ButtonStyles.themeButton}> Log in </p>
       </div>
     </header>
   );
@@ -42,9 +43,15 @@ function Header(): JSX.Element {
 
 function About(): JSX.Element {
   return (
-    <section className="flex flex-col items-center w-[80%] justify-self-center text-justify">
+    <section className="flex flex-col items-center justify-self-center text-justify relative overflow-hidden">
+      {/* bottom left image */}
+      <img src={gridImg} alt="" className="absolute translate-x-[-80%] object-contain w-[800px] aspect-video" />
+
+      {/* bottom right image */}
+      <img src={gridImg} alt="" className="absolute translate-x-[80%] object-contain w-[800px] aspect-video" />
+
       <p className="text-4xl"> About CCE </p>
-      <p className="my-5 text-sm">
+      <p className="my-5 text-sm w-[90%]">
         At SNS Institutions, we constantly endeavor to identify the potential
         opportunities for our students to elevate their personality and
         professional competence, which in turn will enhance their socio-economic
@@ -77,6 +84,7 @@ function LandingPage(): JSX.Element {
       <NavBar />
       <Header />
       <About />
+      <Footer />
     </div>
   );
 }
