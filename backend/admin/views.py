@@ -104,37 +104,83 @@ def job_detail(request, pk):
 @api_view(["GET"])
 def job_overview(request):
     try:
-        # First ensure all jobs have views field
-        jobs_collection.update_many(
-            {"views": {"$exists": False}}, {"$set": {"views": 0}}
+        current_date = datetime.now()
+        print("Current date:", current_date)
+
+        # Debug print to see what's happening
+        print(
+            "Fetching jobs with status filter:",
+            request.query_params.get("status", "live"),
         )
 
-        # Fetch jobs with views field
+        # Build query based on status
+        query = {}
+        status_filter = request.query_params.get("status", "live")
+
+        if status_filter != "all":
+            if status_filter == "live":
+                # For live jobs, either end_date doesn't exist or is in the future
+                query["$or"] = [
+                    {"end_date": {"$exists": False}},
+                    {"end_date": {"$gt": current_date.strftime("%Y-%m-%d")}},
+                    {"status": "live"},
+                ]
+            elif status_filter == "expired":
+                # For expired jobs, either end_date is in the past or status is expired
+                query["$or"] = [
+                    {"end_date": {"$lt": current_date.strftime("%Y-%m-%d")}},
+                    {"status": "expired"},
+                ]
+
+        print("MongoDB query:", query)
+
+        # Fetch all jobs first to debug
+        all_jobs = list(jobs_collection.find({}))
+        print("All jobs in DB:", len(all_jobs))
+        print("Sample job:", all_jobs[0] if all_jobs else "No jobs found")
+
+        # Fetch filtered jobs
         jobs = list(
             jobs_collection.find(
-                {},
+                query,
                 {
                     "title": 1,
                     "department": 1,
+                    "category": 1,
                     "location": 1,
                     "description": 1,
                     "application_link": 1,
                     "views": 1,
+                    "end_date": 1,
+                    "status": 1,
                     "_id": 1,
                 },
             )
         )
 
-        # Convert ObjectId to string for JSON serialization
+        print("Number of jobs found after filter:", len(jobs))
+
+        # Process jobs
         for job in jobs:
             job["_id"] = str(job["_id"])
-            # Ensure views field exists
             if "views" not in job:
                 job["views"] = 0
+            if "status" not in job:
+                job["status"] = (
+                    "live"
+                    if not job.get("end_date")
+                    or datetime.strptime(job["end_date"], "%Y-%m-%d") >= current_date
+                    else "expired"
+                )
+            # Map category to department if needed
+            if "department" not in job and "category" in job:
+                job["department"] = job["category"]
+
+        print("Final processed jobs:", jobs)
 
         return Response(jobs)
     except Exception as e:
-        print(f"Error in job_overview: {str(e)}")  # Add debug print
+        print(f"Error in job_overview: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 

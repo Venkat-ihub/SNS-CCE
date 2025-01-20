@@ -99,6 +99,7 @@ const UserHome = () => {
   const [filteredJobs, setFilteredJobs] = useState([]);
   const [categories, setCategories] = useState([]);
   const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("live");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -136,8 +137,14 @@ const UserHome = () => {
 
   const fetchJobs = async () => {
     try {
-      const response = await axios.get("/api/admin/jobs-overview/");
+      console.log("Fetching jobs with status filter:", statusFilter);
+      const response = await axios.get(
+        `/api/admin/jobs-overview/?status=${statusFilter}`
+      );
+      console.log("API Response:", response);
+      console.log("Fetched jobs:", response.data);
       setJobs(response.data);
+      setFilteredJobs(response.data);
     } catch (error) {
       console.error("Error fetching jobs:", error);
     }
@@ -174,6 +181,7 @@ const UserHome = () => {
   // Filter jobs based on search query and category
   useEffect(() => {
     let filtered = [...jobs];
+    console.log("Filtering jobs:", jobs); // Debug log
 
     // Apply search filter
     if (searchQuery) {
@@ -191,8 +199,18 @@ const UserHome = () => {
       filtered = filtered.filter((job) => job.department === selectedCategory);
     }
 
+    console.log("Filtered jobs:", filtered); // Debug log
     setFilteredJobs(filtered);
   }, [jobs, searchQuery, selectedCategory]);
+
+  // Update the useEffect that calls fetchJobs
+  useEffect(() => {
+    if (user) {
+      // Only fetch if user exists
+      console.log("Calling fetchJobs with statusFilter:", statusFilter);
+      fetchJobs();
+    }
+  }, [statusFilter, user]); // Add dependencies
 
   const handleSaveJob = async (jobId, e) => {
     e.stopPropagation(); // Stop event propagation
@@ -319,6 +337,17 @@ const UserHome = () => {
               ))}
             </Select>
           </FormControl>
+          <FormControl sx={{ minWidth: 150 }}>
+            <Select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              variant="outlined"
+            >
+              <MenuItem value="live">Live Jobs</MenuItem>
+              <MenuItem value="expired">Expired Jobs</MenuItem>
+              <MenuItem value="all">All Jobs</MenuItem>
+            </Select>
+          </FormControl>
         </Box>
 
         {/* Show result count */}
@@ -339,13 +368,30 @@ const UserHome = () => {
               display: "flex",
               flexDirection: "column",
               transition: "transform 0.2s ease-in-out",
+              opacity: job.status === "expired" ? 0.7 : 1,
               "&:hover": {
                 transform: "translateY(-5px)",
               },
             }}
           >
             <CardContent sx={{ flexGrow: 1 }}>
-              <JobTitle variant="h6">{job.title}</JobTitle>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                }}
+              >
+                <JobTitle variant="h6">{job.title}</JobTitle>
+                {job.status === "expired" && (
+                  <Chip
+                    label="Expired"
+                    color="error"
+                    size="small"
+                    sx={{ ml: 1 }}
+                  />
+                )}
+              </Box>
 
               <Box
                 sx={{ display: "flex", alignItems: "center", mb: 1, gap: 1 }}
