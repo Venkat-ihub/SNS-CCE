@@ -1,6 +1,6 @@
 import React, { FC } from "react";
 import Footer from '../components/common/Footer';
-import { buttonStyles } from "../components/common/constants";
+import { ButtonStyles } from "../components/common/constants";
 
 //img imports
 import gridImg from '../assets/images/Grid.png'
@@ -18,7 +18,7 @@ function NavBar(): JSX.Element {
       </div>
 
       <div className="w-1/4 flex justify-end">
-        <button className={buttonStyles.themeButton}> Log in </button>
+        <button className={ButtonStyles.themeButton}> Log in </button>
       </div>
     </nav>
   );
@@ -35,7 +35,7 @@ function Header(): JSX.Element {
         <p className="my-3 text-themeYellow">
           Turning Aspirants into Achievments
         </p>
-        <p className={buttonStyles.themeButton}> Log in </p>
+        <p className={ButtonStyles.themeButton}> Log in </p>
       </div>
     </header>
   );
