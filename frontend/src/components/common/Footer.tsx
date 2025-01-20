@@ -1,7 +1,7 @@
 const Footer = () => {
 
     return (
-        <footer className="w-full flex justify-center items-center min-h-[30vh] border border-gray-300">
+        <footer className="w-full flex justify-center items-center min-h-[30vh] border border-gray-300 mt-20">
             <div className="container p-10">
                 <div className="flex">
                     <div className="w-2/5">

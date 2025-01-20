@@ -5,7 +5,7 @@ enum ButtonStyles {
 
 enum AppPages {
   userJobOpportunities = "userJobOpportunities",
-  userInternshipOpportunities = "userInternshipOpportunities"
+  userInternshipOpportunities = "userInternshipOpportunities",
 }
 
 enum Departments {
@@ -20,5 +20,13 @@ enum Departments {
   ArmyAndDefencec = "Army and Defence Systems",
 }
 
+enum AppRoutes {
+  login = "/login",
+  register = "/register",
+  adminSignup = "/admin/signup",
+  adminLogin = "/admin/login",
+  jobs = "/jobs",
+  internships = "/internships",
+}
 
-export { ButtonStyles, AppPages, Departments };
+export { ButtonStyles, AppPages, Departments, AppRoutes };
