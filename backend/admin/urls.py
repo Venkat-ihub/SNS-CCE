@@ -8,4 +8,7 @@ urlpatterns = [
     path(
         "jobs-overview/<str:pk>/", views.job_overview_detail, name="job-overview-detail"
     ),
+    path("jobs/<str:pk>/save/", views.save_job, name="save-job"),
+    path("jobs/<str:pk>/unsave/", views.unsave_job, name="unsave-job"),
+    path("saved-jobs/<str:user_id>/", views.get_saved_jobs, name="get-saved-jobs"),
 ]

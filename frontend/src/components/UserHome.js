@@ -1,143 +1,223 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Typography, Container, Avatar, IconButton, Menu, MenuItem, ListItemIcon, ListItemText } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
-import { styled } from '@mui/material/styles';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import PersonIcon from '@mui/icons-material/Person';
-import DashboardIcon from '@mui/icons-material/Dashboard';
+import React, { useEffect, useState } from "react";
+import {
+  Box,
+  Typography,
+  Container,
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Card,
+  CardContent,
+  CardActions,
+  Chip,
+  Tooltip,
+  TextField,
+  InputAdornment,
+  FormControl,
+  Select,
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { styled } from "@mui/material/styles";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import PersonIcon from "@mui/icons-material/Person";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import BookmarkBorderIcon from "@mui/icons-material/BookmarkBorder";
+import BookmarkIcon from "@mui/icons-material/Bookmark";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import BusinessIcon from "@mui/icons-material/Business";
+import SearchIcon from "@mui/icons-material/Search";
+import FilterListIcon from "@mui/icons-material/FilterList";
+import axios from "../config/axios";
 
-// Styled components
 const PageContainer = styled(Box)({
-  minHeight: '100vh',
-  backgroundColor: '#ffffff',
-  padding: '2rem 0',
+  minHeight: "100vh",
+  backgroundColor: "#f5f5f5",
+  padding: "2rem 0",
 });
 
 const Header = styled(Box)({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '0 2rem',
-  marginBottom: '3rem',
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "0 2rem",
+  marginBottom: "2rem",
 });
 
-const GridContainer = styled(Box)({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-  gap: '2rem',
-  padding: '0 2rem',
+const JobGrid = styled(Box)({
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+  gap: "2rem",
+  padding: "0 2rem",
 });
 
-const Card = styled(Box)({
-  backgroundColor: '#ffffff',
-  borderRadius: '12px',
-  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-  transition: 'transform 0.3s, box-shadow 0.3s',
-  cursor: 'pointer',
-  overflow: 'hidden',
-  '&:hover': {
-    transform: 'translateY(-5px)',
-    boxShadow: '0 6px 25px rgba(0, 0, 0, 0.12)',
+const JobCard = styled(Card)({
+  height: "100%",
+  display: "flex",
+  flexDirection: "column",
+  transition: "transform 0.2s ease-in-out",
+  "&:hover": {
+    transform: "translateY(-5px)",
   },
 });
 
-const CardImage = styled('img')({
-  width: '100%',
-  height: '200px',
-  objectFit: 'cover',
+const JobTitle = styled(Typography)({
+  fontWeight: 600,
+  marginBottom: "0.5rem",
+  display: "-webkit-box",
+  "-webkit-line-clamp": 2,
+  "-webkit-box-orient": "vertical",
+  overflow: "hidden",
 });
 
-const CardContent = styled(Box)({
-  padding: '1.5rem',
+const JobDescription = styled(Typography)({
+  color: "#666",
+  marginBottom: "1rem",
+  display: "-webkit-box",
+  "-webkit-line-clamp": 3,
+  "-webkit-box-orient": "vertical",
+  overflow: "hidden",
 });
 
-const CardTitle = styled(Typography)({
-  fontSize: '1.25rem',
-  fontWeight: '600',
-  color: '#2c3e50',
-  marginBottom: '0.5rem',
+const SearchContainer = styled(Box)({
+  display: "flex",
+  gap: "1rem",
+  alignItems: "center",
+  marginBottom: "2rem",
+  padding: "0 2rem",
 });
-
-const CardDescription = styled(Typography)({
-  color: '#666666',
-  fontSize: '0.9rem',
-});
-
-const items = [
-  {
-    title: 'Communication',
-    description: 'Master effective communication techniques',
-    image: 'https://via.placeholder.com/400x200?text=Communication',
-    link: '/communication'
-  },
-  {
-    title: 'Self Introduction',
-    description: 'Learn to present yourself professionally',
-    image: 'https://via.placeholder.com/400x200?text=Self+Introduction',
-    link: '/self-intro'
-  },
-  {
-    title: 'Presentation Skills',
-    description: 'Develop impactful presentation abilities',
-    image: 'https://via.placeholder.com/400x200?text=Presentation',
-    link: '/presentation'
-  },
-  {
-    title: 'Resume Building',
-    description: 'Create compelling professional resumes',
-    image: 'https://via.placeholder.com/400x200?text=Resume',
-    link: '/resume'
-  },
-  {
-    title: 'Group Discussion',
-    description: 'Excel in group discussions and team activities',
-    image: 'https://via.placeholder.com/400x200?text=Group+Discussion',
-    link: '/gd'
-  },
-  {
-    title: 'BMC Pitching',
-    description: 'Presenting your business idea using the Business Model Canvas.',
-    image: 'https://via.placeholder.com/400x200?text=BMC+Pitching',
-    link: '/BMC_Pitching'
-  },
-  {
-    title: 'Networking',
-    description: 'Building connections to exchange ideas and opportunities.',
-    image: 'https://via.placeholder.com/400x200?text=Networking',
-    link: '/Networking'
-  },
-  {
-    title: 'Outfit',
-    description: ' Dressing professionally to make a strong impression.',
-    image: 'https://via.placeholder.com/400x200?text=Outfit',
-    link: '/outfit'
-  },
-  {
-    title: 'Interview',
-    description: 'Excel in group discussions and team activities',
-    image: 'https://via.placeholder.com/400x200?text=Interview',
-    link: '/Interview'
-  }
-];
 
 const UserHome = () => {
   const [user, setUser] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const [savedJobs, setSavedJobs] = useState([]);
   const [anchorEl, setAnchorEl] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [filteredJobs, setFilteredJobs] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [showFilters, setShowFilters] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userInfo = localStorage.getItem('userInfo');
+    const userInfo = localStorage.getItem("userInfo");
     if (!userInfo) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
     const parsedUser = JSON.parse(userInfo);
-    if (parsedUser.user_type === 'admin') {
-      navigate('/admin-home');
+    if (parsedUser.user_type === "admin") {
+      navigate("/admin-home");
       return;
     }
     setUser(parsedUser);
+    fetchJobs();
+    // Load saved jobs from localStorage
+    const saved = JSON.parse(localStorage.getItem("savedJobs") || "[]");
+    setSavedJobs(saved);
+
+    // Set up periodic refresh of job data
+    const refreshInterval = setInterval(fetchJobs, 30000); // Refresh every 30 seconds
+
+    // Add event listener for job view completion
+    const handleJobViewComplete = () => {
+      fetchJobs();
+    };
+
+    window.addEventListener("jobViewComplete", handleJobViewComplete);
+
+    return () => {
+      clearInterval(refreshInterval);
+      window.removeEventListener("jobViewComplete", handleJobViewComplete);
+    };
   }, [navigate]);
+
+  const fetchJobs = async () => {
+    try {
+      const response = await axios.get("/api/admin/jobs-overview/");
+      setJobs(response.data);
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
+    }
+  };
+
+  // Update useEffect to fetch saved jobs
+  useEffect(() => {
+    const fetchSavedJobs = async () => {
+      try {
+        const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+        if (!userInfo || !userInfo._id) {
+          console.error("No user info found");
+          navigate("/login");
+          return;
+        }
+        const response = await axios.get(
+          `/api/admin/saved-jobs/${userInfo._id}/`
+        );
+        setSavedJobs(response.data.map((job) => job._id));
+      } catch (error) {
+        console.error("Error fetching saved jobs:", error);
+      }
+    };
+
+    fetchSavedJobs();
+  }, [navigate]);
+
+  useEffect(() => {
+    // Extract unique categories from jobs
+    const uniqueCategories = [...new Set(jobs.map((job) => job.department))];
+    setCategories(uniqueCategories);
+  }, [jobs]);
+
+  // Filter jobs based on search query and category
+  useEffect(() => {
+    let filtered = [...jobs];
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (job) =>
+          job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          job.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          job.department.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          job.location.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply category filter
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter((job) => job.department === selectedCategory);
+    }
+
+    setFilteredJobs(filtered);
+  }, [jobs, searchQuery, selectedCategory]);
+
+  const handleSaveJob = async (jobId, e) => {
+    e.stopPropagation(); // Stop event propagation
+    try {
+      const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+      if (!userInfo || !userInfo._id) {
+        console.error("No user info found");
+        navigate("/login");
+        return;
+      }
+      const userId = userInfo._id;
+
+      if (savedJobs.includes(jobId)) {
+        await axios.post(`/api/admin/jobs/${jobId}/unsave/`, {
+          user_id: userId,
+        });
+        setSavedJobs((prev) => prev.filter((id) => id !== jobId));
+      } else {
+        await axios.post(`/api/admin/jobs/${jobId}/save/`, { user_id: userId });
+        setSavedJobs((prev) => [...prev, jobId]);
+      }
+    } catch (error) {
+      console.error("Error saving/unsaving job:", error);
+    }
+  };
 
   const handleProfileClick = (event) => {
     setAnchorEl(event.currentTarget);
@@ -152,63 +232,185 @@ const UserHome = () => {
     navigate(path);
   };
 
-  if (!user) return null;
+  const handleJobClick = (jobId) => {
+    navigate(`/jobs/${jobId}`);
+  };
 
-  const firstName = user.name.split(' ')[0];
+  const handleSearchChange = (event) => {
+    setSearchQuery(event.target.value);
+  };
+
+  const handleCategoryChange = (event) => {
+    setSelectedCategory(event.target.value);
+  };
+
+  if (!user) return null;
 
   return (
     <PageContainer>
       <Header>
         <Box>
-          <Typography variant="h4" sx={{ color: '#2c3e50', fontWeight: '600' }}>
-            AI Trainer
+          <Typography variant="h4" sx={{ color: "#2c3e50", fontWeight: "600" }}>
+            Job Listings
           </Typography>
-          <Typography variant="h6" sx={{ color: '#666666', mt: 1 }}>
-            Welcome, {firstName}!
+          <Typography variant="subtitle1" color="text.secondary">
+            Find your next opportunity
           </Typography>
         </Box>
         <IconButton onClick={handleProfileClick} size="large">
-          <AccountCircleIcon sx={{ fontSize: 40, color: '#2c3e50' }} />
+          <AccountCircleIcon sx={{ fontSize: 40, color: "#2c3e50" }} />
         </IconButton>
         <Menu
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
           onClose={handleClose}
           anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'right',
+            vertical: "bottom",
+            horizontal: "right",
           }}
           transformOrigin={{
-            vertical: 'top',
-            horizontal: 'right',
+            vertical: "top",
+            horizontal: "right",
           }}
         >
-          <MenuItem onClick={() => handleMenuItemClick('/profile')}>
+          <MenuItem onClick={() => handleMenuItemClick("/profile")}>
             <ListItemIcon>
               <PersonIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>Profile Info</ListItemText>
           </MenuItem>
-          <MenuItem onClick={() => handleMenuItemClick('/dashboard')}>
+          <MenuItem onClick={() => handleMenuItemClick("/saved-jobs")}>
             <ListItemIcon>
-              <DashboardIcon fontSize="small" />
+              <BookmarkIcon fontSize="small" />
             </ListItemIcon>
-            <ListItemText>Dashboard</ListItemText>
+            <ListItemText>Saved Jobs</ListItemText>
           </MenuItem>
         </Menu>
       </Header>
 
-      <GridContainer>
-        {items.map((item, index) => (
-          <Card key={index} onClick={() => navigate(item.link)}>
-            <CardImage src={item.image} alt={item.title} />
-            <CardContent>
-              <CardTitle>{item.title}</CardTitle>
-              <CardDescription>{item.description}</CardDescription>
+      <Box sx={{ px: 2, mb: 4 }}>
+        <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+          <TextField
+            fullWidth
+            variant="outlined"
+            placeholder="Search jobs..."
+            value={searchQuery}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon color="action" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <FormControl sx={{ minWidth: 200 }}>
+            <Select
+              value={selectedCategory}
+              onChange={handleCategoryChange}
+              displayEmpty
+              variant="outlined"
+            >
+              <MenuItem value="all">All Categories</MenuItem>
+              {categories.map((category) => (
+                <MenuItem key={category} value={category}>
+                  {category}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </Box>
+
+        {/* Show result count */}
+        <Typography variant="body2" color="text.secondary">
+          {filteredJobs.length} jobs found
+        </Typography>
+      </Box>
+
+      <JobGrid>
+        {filteredJobs.map((job) => (
+          <JobCard
+            key={job._id}
+            elevation={2}
+            onClick={() => handleJobClick(job._id)}
+            sx={{
+              cursor: "pointer",
+              height: "100%",
+              display: "flex",
+              flexDirection: "column",
+              transition: "transform 0.2s ease-in-out",
+              "&:hover": {
+                transform: "translateY(-5px)",
+              },
+            }}
+          >
+            <CardContent sx={{ flexGrow: 1 }}>
+              <JobTitle variant="h6">{job.title}</JobTitle>
+
+              <Box
+                sx={{ display: "flex", alignItems: "center", mb: 1, gap: 1 }}
+              >
+                <BusinessIcon fontSize="small" color="action" />
+                <Typography variant="body2" color="text.secondary">
+                  {job.department}
+                </Typography>
+              </Box>
+
+              <Box
+                sx={{ display: "flex", alignItems: "center", mb: 2, gap: 1 }}
+              >
+                <LocationOnIcon fontSize="small" color="action" />
+                <Typography variant="body2" color="text.secondary">
+                  {job.location}
+                </Typography>
+              </Box>
+
+              <JobDescription variant="body2">{job.description}</JobDescription>
             </CardContent>
-          </Card>
+
+            <CardActions
+              sx={{
+                justifyContent: "space-between",
+                px: 2,
+                pb: 2,
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Tooltip title="View count">
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <VisibilityIcon fontSize="small" color="action" />
+                    <Typography variant="body2" color="text.secondary">
+                      {job.views || 0}
+                    </Typography>
+                  </Box>
+                </Tooltip>
+              </Box>
+
+              <Box>
+                <Tooltip
+                  title={
+                    savedJobs.includes(job._id)
+                      ? "Remove from saved"
+                      : "Save job"
+                  }
+                >
+                  <IconButton
+                    onClick={(e) => handleSaveJob(job._id, e)}
+                    color={savedJobs.includes(job._id) ? "primary" : "default"}
+                  >
+                    {savedJobs.includes(job._id) ? (
+                      <BookmarkIcon />
+                    ) : (
+                      <BookmarkBorderIcon />
+                    )}
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </CardActions>
+          </JobCard>
         ))}
-      </GridContainer>
+      </JobGrid>
     </PageContainer>
   );
 };

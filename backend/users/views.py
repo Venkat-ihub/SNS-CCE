@@ -205,46 +205,37 @@ def register_user(request):
 @api_view(["POST"])
 def login_user(request):
     try:
-        logger.info("Login request data: %s", request.data)
         email = request.data.get("email")
         password = request.data.get("password")
-        user_type = request.data.get("user_type", "user")
 
-        if not email or not password:
-            return Response(
-                {"error": "Email and password are required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # Check if it's an admin login
+        admin = admins_collection.find_one({"email": email})
+        if admin:
+            if check_password(password, admin["password"]):
+                admin["_id"] = str(admin["_id"])  # Convert ObjectId to string
+                admin["user_type"] = "admin"  # Add user type
+                return Response(admin)
+            else:
+                return Response(
+                    {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
+                )
 
-        user = CustomUser.get_user_by_email(email, user_type)
-        logger.info("Found user: %s", bool(user))
+        # Check regular user login
+        user = users_collection.find_one({"email": email})
+        if user:
+            if check_password(password, user["password"]):
+                user["_id"] = str(user["_id"])  # Convert ObjectId to string
+                user["user_type"] = "user"  # Add user type
+                return Response(user)
+            else:
+                return Response(
+                    {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
+                )
 
-        if not user:
-            return Response(
-                {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
-            )
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Verify password using Django's check_password
-        if check_password(password, user["password"]):
-            response_data = {
-                "id": str(user["_id"]),
-                "name": user["name"],
-                "email": user["email"],
-                "user_type": user_type,
-                "mobile_number": user.get("mobile_number", ""),
-            }
-            logger.info("Login successful for user: %s", email)
-            return Response(response_data)
-
-        logger.warning("Invalid password for user: %s", email)
-        return Response(
-            {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
-        )
     except Exception as e:
-        logger.error("Login error: %s", str(e), exc_info=True)
-        return Response(
-            {"error": "Login failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["POST"])
