@@ -24,6 +24,8 @@ import { useNavigate } from "react-router-dom";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
+import PushPinIcon from "@mui/icons-material/PushPin";
+import PushPinOutlinedIcon from "@mui/icons-material/PushPinOutlined";
 import axios from "../config/axios";
 
 const AdminHome = () => {
@@ -129,7 +131,7 @@ const AdminHome = () => {
     try {
       const submitData = {
         ...formData,
-        status: "live", // Set initial status for new jobs
+        status: "live",
       };
 
       if (selectedJob) {
@@ -141,7 +143,6 @@ const AdminHome = () => {
       handleCloseDialog();
     } catch (error) {
       console.error("Error saving job:", error);
-      // Optionally add error notification here
     }
   };
 
@@ -153,6 +154,15 @@ const AdminHome = () => {
       } catch (error) {
         console.error("Error deleting job:", error);
       }
+    }
+  };
+
+  const handleTogglePin = async (jobId) => {
+    try {
+      const response = await axios.post(`/api/admin/jobs/${jobId}/toggle-pin/`);
+      fetchJobs();
+    } catch (error) {
+      console.error("Error toggling pin status:", error);
     }
   };
 
@@ -226,7 +236,15 @@ const AdminHome = () => {
               <TableBody>
                 {jobs.map((job) => (
                   <TableRow key={job._id}>
-                    <TableCell>{job.title}</TableCell>
+                    <TableCell>
+                      <IconButton
+                        onClick={() => handleTogglePin(job._id)}
+                        color={job.pinned ? "primary" : "default"}
+                      >
+                        {job.pinned ? <PushPinIcon /> : <PushPinOutlinedIcon />}
+                      </IconButton>
+                      {job.title}
+                    </TableCell>
                     <TableCell>{job.department}</TableCell>
                     <TableCell>{job.category}</TableCell>
                     <TableCell>{job.vacancies}</TableCell>

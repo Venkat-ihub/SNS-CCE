@@ -24,52 +24,29 @@ const JobDetails = () => {
   const navigate = useNavigate();
   const [job, setJob] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [user, setUser] = useState(null);
 
   const fetchJobDetails = useCallback(async () => {
     try {
-      const response = await axios.get(`/api/admin/jobs/${id}`);
+      const userInfo = localStorage.getItem("userInfo");
+      if (!userInfo) {
+        navigate("/login");
+        return;
+      }
+      const parsedUser = JSON.parse(userInfo);
+
+      const response = await axios.get(`/api/users/jobs/${id}/`, {
+        params: { user_id: parsedUser._id },
+      });
       setJob(response.data);
     } catch (error) {
       console.error("Error fetching job details:", error);
-      navigate(-1);
     }
   }, [id, navigate]);
 
   useEffect(() => {
-    const fetchJobAndSaveStatus = async () => {
-      try {
-        const userInfo = localStorage.getItem("userInfo");
-        if (!userInfo) {
-          navigate("/login");
-          return;
-        }
-
-        const parsedUser = JSON.parse(userInfo);
-
-        // Fetch job details with user_id
-        const jobResponse = await axios.get(
-          `/api/admin/jobs/${id}?user_id=${parsedUser._id}`
-        );
-        setJob(jobResponse.data);
-
-        // Fetch saved jobs to check status
-        const savedJobsResponse = await axios.get(
-          `/api/admin/saved-jobs/${parsedUser._id}/`
-        );
-        const savedJobIds = savedJobsResponse.data.map((job) => job._id);
-        setIsSaved(savedJobIds.includes(id));
-      } catch (error) {
-        console.error("Error fetching job details:", error);
-        navigate(-1);
-      }
-    };
-
-    fetchJobAndSaveStatus();
-
-    return () => {
-      window.dispatchEvent(new CustomEvent("jobViewComplete"));
-    };
-  }, [id, navigate]);
+    fetchJobDetails();
+  }, [fetchJobDetails]);
 
   const handleSaveToggle = async () => {
     try {

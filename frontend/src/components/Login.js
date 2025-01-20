@@ -29,31 +29,27 @@ const Login = () => {
     setError("");
   };
 
-  const handleSubmit = async (values, { setSubmitting, setFieldError }) => {
+  const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      const response = await axios.post("/api/login/", values);
+      setError("");
+      const response = await axios.post("/api/users/login/", {
+        email: values.email,
+        password: values.password,
+      });
 
       if (response.data) {
-        // Store user info in localStorage
         localStorage.setItem("userInfo", JSON.stringify(response.data));
-
-        // Navigate based on user type
+        // Check user type and redirect accordingly
         if (response.data.user_type === "admin") {
-          navigate("/admin-home", { replace: true });
+          navigate("/admin-home");
         } else {
-          navigate("/user-home", { replace: true });
+          navigate("/"); // User home page
         }
       }
     } catch (error) {
-      console.error("Login error:", error);
-      if (error.response?.data?.error) {
-        setFieldError("email", error.response.data.error);
-      } else {
-        setFieldError("email", "An error occurred during login");
-      }
-    } finally {
-      setSubmitting(false);
+      setError(error.response?.data?.error || "Login failed");
     }
+    setSubmitting(false);
   };
 
   // Check if user is already logged in

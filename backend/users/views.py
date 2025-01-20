@@ -20,6 +20,8 @@ from django.contrib.auth.hashers import make_password
 # Set up logging
 logger = logging.getLogger(__name__)
 
+jobs_collection = db["jobs"]
+
 
 def send_email_otp(email, otp):
     """Send OTP via email"""
@@ -208,34 +210,44 @@ def login_user(request):
         email = request.data.get("email")
         password = request.data.get("password")
 
-        # Check if it's an admin login
-        admin = admins_collection.find_one({"email": email})
-        if admin:
-            if check_password(password, admin["password"]):
-                admin["_id"] = str(admin["_id"])  # Convert ObjectId to string
-                admin["user_type"] = "admin"  # Add user type
-                return Response(admin)
-            else:
-                return Response(
-                    {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
-                )
+        if not email or not password:
+            return Response(
+                {"error": "Email and password are required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
-        # Check regular user login
+        # Check users collection first
         user = users_collection.find_one({"email": email})
-        if user:
-            if check_password(password, user["password"]):
-                user["_id"] = str(user["_id"])  # Convert ObjectId to string
-                user["user_type"] = "user"  # Add user type
-                return Response(user)
-            else:
-                return Response(
-                    {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
-                )
+        user_type = "user"
 
-        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        # If not found in users, check admins
+        if not user:
+            user = admins_collection.find_one({"email": email})
+            user_type = "admin"
+
+        if not user:
+            return Response(
+                {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # Verify password
+        if not check_password(password, user["password"]):
+            return Response(
+                {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # Convert ObjectId to string for JSON serialization
+        user["_id"] = str(user["_id"])
+        # Set user type
+        user["user_type"] = user_type
+
+        return Response(user)
 
     except Exception as e:
-        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logger.error(f"Error in login: {str(e)}", exc_info=True)
+        return Response(
+            {"error": "Login failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @api_view(["POST"])
@@ -705,3 +717,183 @@ def update_profile(request):
             {"error": "Failed to update profile"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+@api_view(["GET"])
+def job_detail(request, pk):
+    try:
+        job = jobs_collection.find_one({"_id": ObjectId(pk)})
+        if not job:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        user_id = request.query_params.get("user_id")
+        current_date = datetime.now()
+
+        # Update job status if needed
+        if "status" not in job:
+            is_live = not job.get("end_date") or (
+                job.get("end_date")
+                and datetime.strptime(job["end_date"], "%Y-%m-%d") >= current_date
+            )
+            jobs_collection.update_one(
+                {"_id": ObjectId(pk)},
+                {"$set": {"status": "live" if is_live else "expired"}},
+            )
+
+        # Handle view count
+        if user_id:
+            # Initialize views and viewed_by if they don't exist
+            if "views" not in job or "viewed_by" not in job:
+                jobs_collection.update_one(
+                    {"_id": ObjectId(pk)},
+                    {"$set": {"views": 0, "viewed_by": []}},
+                )
+                job["views"] = 0
+                job["viewed_by"] = []
+
+            # Update view count if user hasn't viewed before
+            if user_id not in job.get("viewed_by", []):
+                # Use findOneAndUpdate to get the updated document
+                updated_job = jobs_collection.find_one_and_update(
+                    {"_id": ObjectId(pk)},
+                    {
+                        "$inc": {"views": 1},
+                        "$push": {"viewed_by": user_id},
+                    },
+                    return_document=True,
+                )
+                if updated_job:
+                    job = updated_job
+
+        # Prepare response
+        job["_id"] = str(job["_id"])
+        if "viewed_by" in job:
+            del job["viewed_by"]
+
+        return Response(job)
+    except Exception as e:
+        logger.error(f"Error in job_detail: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+def save_job(request, pk):
+    try:
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response(
+                {"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        users_collection.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$addToSet": {"saved_jobs": pk}},
+        )
+
+        return Response({"message": "Job saved successfully"})
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+def unsave_job(request, pk):
+    try:
+        user_id = request.data.get("user_id")
+        if not user_id:
+            return Response(
+                {"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        users_collection.update_one(
+            {"_id": ObjectId(user_id)}, {"$pull": {"saved_jobs": pk}}
+        )
+
+        return Response({"message": "Job removed from saved"})
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+def get_saved_jobs(request, user_id):
+    try:
+        user = users_collection.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return Response(
+                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        saved_jobs = user.get("saved_jobs", [])
+        jobs = []
+
+        for job_id in saved_jobs:
+            job = jobs_collection.find_one({"_id": ObjectId(job_id)})
+            if job:
+                job["_id"] = str(job["_id"])
+                jobs.append(job)
+
+        return Response(jobs)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["GET"])
+def job_overview(request):
+    try:
+        current_date = datetime.now()
+        logger.info(
+            f"Fetching jobs with status filter: {request.query_params.get('status', 'live')}"
+        )
+
+        # First update all jobs' status and ensure views exist
+        all_jobs = list(jobs_collection.find({}))
+        for job in all_jobs:
+            updates = {}
+
+            # Check status
+            if "status" not in job:
+                is_live = not job.get("end_date") or (
+                    job.get("end_date")
+                    and datetime.strptime(job["end_date"], "%Y-%m-%d") >= current_date
+                )
+                updates["status"] = "live" if is_live else "expired"
+
+            # Check views
+            if "views" not in job:
+                updates["views"] = 0
+                updates["viewed_by"] = []
+
+            # Check department
+            if "department" not in job and "category" in job:
+                updates["department"] = job["category"]
+
+            # Apply updates if any
+            if updates:
+                jobs_collection.update_one(
+                    {"_id": job["_id"]},
+                    {"$set": updates},
+                )
+
+        # Build query based on status
+        query = {}
+        status_filter = request.query_params.get("status", "live")
+
+        if status_filter != "all":
+            query["status"] = status_filter
+
+        # Fetch filtered jobs and sort by pinned status
+        jobs = list(jobs_collection.find(query).sort([("pinned", -1)]))  # -1 for descending order
+
+        # Process jobs for response
+        for job in jobs:
+            job["_id"] = str(job["_id"])
+            if "viewed_by" in job:
+                del job["viewed_by"]
+            # Ensure pinned field exists
+            if "pinned" not in job:
+                job["pinned"] = False
+
+        logger.info(f"Returning {len(jobs)} jobs")
+        return Response(jobs)
+    except Exception as e:
+        logger.error(f"Error in job_overview: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

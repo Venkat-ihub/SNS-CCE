@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import {
   Box,
   Typography,
-  Container,
   IconButton,
   Menu,
   MenuItem,
@@ -30,6 +29,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import BusinessIcon from "@mui/icons-material/Business";
 import SearchIcon from "@mui/icons-material/Search";
 import FilterListIcon from "@mui/icons-material/FilterList";
+import PushPinIcon from "@mui/icons-material/PushPin";
 import axios from "../config/axios";
 
 const PageContainer = styled(Box)({
@@ -108,11 +108,14 @@ const UserHome = () => {
       navigate("/login");
       return;
     }
+
     const parsedUser = JSON.parse(userInfo);
+    // Redirect admin to admin home
     if (parsedUser.user_type === "admin") {
-      navigate("/admin-home");
+      navigate("/admin-home", { replace: true });
       return;
     }
+
     setUser(parsedUser);
     fetchJobs();
     // Load saved jobs from localStorage
@@ -137,12 +140,9 @@ const UserHome = () => {
 
   const fetchJobs = async () => {
     try {
-      console.log("Fetching jobs with status filter:", statusFilter);
       const response = await axios.get(
-        `/api/admin/jobs-overview/?status=${statusFilter}`
+        `/api/users/jobs-overview/?status=${statusFilter}`
       );
-      console.log("API Response:", response);
-      console.log("Fetched jobs:", response.data);
       setJobs(response.data);
       setFilteredJobs(response.data);
     } catch (error) {
@@ -203,34 +203,26 @@ const UserHome = () => {
     setFilteredJobs(filtered);
   }, [jobs, searchQuery, selectedCategory]);
 
-  // Update the useEffect that calls fetchJobs
+  // Update useEffect to refetch when statusFilter changes
   useEffect(() => {
     if (user) {
-      // Only fetch if user exists
-      console.log("Calling fetchJobs with statusFilter:", statusFilter);
       fetchJobs();
     }
-  }, [statusFilter, user]); // Add dependencies
+  }, [statusFilter, user]);
 
   const handleSaveJob = async (jobId, e) => {
-    e.stopPropagation(); // Stop event propagation
+    e.stopPropagation();
     try {
-      const userInfo = JSON.parse(localStorage.getItem("userInfo"));
-      if (!userInfo || !userInfo._id) {
-        console.error("No user info found");
-        navigate("/login");
-        return;
-      }
-      const userId = userInfo._id;
-
       if (savedJobs.includes(jobId)) {
-        await axios.post(`/api/admin/jobs/${jobId}/unsave/`, {
-          user_id: userId,
+        await axios.post(`/api/users/unsave-job/${jobId}/`, {
+          user_id: user._id,
         });
-        setSavedJobs((prev) => prev.filter((id) => id !== jobId));
+        setSavedJobs(savedJobs.filter((id) => id !== jobId));
       } else {
-        await axios.post(`/api/admin/jobs/${jobId}/save/`, { user_id: userId });
-        setSavedJobs((prev) => [...prev, jobId]);
+        await axios.post(`/api/users/save-job/${jobId}/`, {
+          user_id: user._id,
+        });
+        setSavedJobs([...savedJobs, jobId]);
       }
     } catch (error) {
       console.error("Error saving/unsaving job:", error);
@@ -369,6 +361,7 @@ const UserHome = () => {
               flexDirection: "column",
               transition: "transform 0.2s ease-in-out",
               opacity: job.status === "expired" ? 0.7 : 1,
+              borderTop: job.pinned ? "3px solid #1976d2" : "none",
               "&:hover": {
                 transform: "translateY(-5px)",
               },
@@ -382,7 +375,12 @@ const UserHome = () => {
                   alignItems: "flex-start",
                 }}
               >
-                <JobTitle variant="h6">{job.title}</JobTitle>
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  {job.pinned && (
+                    <PushPinIcon color="primary" fontSize="small" />
+                  )}
+                  <JobTitle variant="h6">{job.title}</JobTitle>
+                </Box>
                 {job.status === "expired" && (
                   <Chip
                     label="Expired"

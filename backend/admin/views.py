@@ -268,3 +268,31 @@ def get_saved_jobs(request, user_id):
         return Response(jobs)
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@csrf_exempt
+@api_view(["POST"])
+def toggle_pin_job(request, pk):
+    try:
+        job = jobs_collection.find_one({"_id": ObjectId(pk)})
+        if not job:
+            return Response(
+                {"error": "Job not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Toggle pinned status
+        currently_pinned = job.get("pinned", False)
+        jobs_collection.update_one(
+            {"_id": ObjectId(pk)},
+            {"$set": {"pinned": not currently_pinned}},
+        )
+
+        return Response(
+            {
+                "message": f"Job {'unpinned' if currently_pinned else 'pinned'} successfully",
+                "pinned": not currently_pinned,
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error toggling pin status: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

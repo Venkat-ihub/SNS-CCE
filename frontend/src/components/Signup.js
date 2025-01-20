@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
 import axios from "../config/axios";
@@ -11,12 +11,10 @@ import {
   Link as MuiLink,
   Tabs,
   Tab,
-  CircularProgress,
   Snackbar,
   Alert,
 } from "@mui/material";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
-import { styled } from "@mui/material/styles";
 import OTPVerification from "./OTPVerification";
 
 const SignupSchema = Yup.object().shape({
@@ -41,22 +39,6 @@ const SignupSchema = Yup.object().shape({
     .required("Required"),
 });
 
-const OTPContainer = styled(Box)({
-  display: "flex",
-  alignItems: "center",
-  gap: "1rem",
-  marginTop: "1rem",
-});
-
-const TimerText = styled(Typography)({
-  color: "#666",
-  fontSize: "0.9rem",
-});
-
-const ResendButton = styled(Button)({
-  minWidth: "auto",
-});
-
 const Signup = () => {
   const navigate = useNavigate();
   const [error, setError] = useState("");
@@ -66,7 +48,6 @@ const Signup = () => {
   const [verificationError, setVerificationError] = useState("");
   const [mobileVerificationError, setMobileVerificationError] = useState("");
 
-  // Add snackbar state
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -149,10 +130,10 @@ const Signup = () => {
                 return;
               }
               setError("");
-              await axios.post("/api/register/", {
+              await axios.post("/api/users/register/", {
                 ...values,
                 name: `${values.first_name} ${values.last_name}`,
-                user_type: userType,
+                phone: values.mobile_number,
               });
               setSnackbar({
                 open: true,
