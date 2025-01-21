@@ -1,26 +1,35 @@
 from rest_framework import status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from django.http import JsonResponse
-from django.contrib.auth.hashers import check_password
+from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail, get_connection
 from django.core.mail.backends.smtp import EmailBackend
 from datetime import datetime, timedelta
 from django.conf import settings
-from .models import CustomUser
-from pymongo.errors import ConnectionFailure, OperationFailure
-from .mongodb import users_collection, admins_collection, db
+from .mongodb import (
+    users_collection,
+    admins_collection,
+    jobs_collection,
+    db,
+    study_materials_collection,
+)
 import logging
 import random
 from django.core.cache import cache
 import json
 from bson import ObjectId
 from django.contrib.auth.hashers import make_password
+from rest_framework.permissions import IsAuthenticated
+from .serializers import UserSerializer
+import jwt
+from .permissions import IsMongoDBAdmin
+import os
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 
 # Set up logging
 logger = logging.getLogger(__name__)
-
-jobs_collection = db["jobs"]
 
 
 def send_email_otp(email, otp):
@@ -207,12 +216,12 @@ def register_user(request):
 @api_view(["POST"])
 def login_user(request):
     try:
-        email = request.data.get("email")
-        password = request.data.get("password")
+        email = request.data.get("email", "")
+        password = request.data.get("password", "")
 
         if not email or not password:
             return Response(
-                {"error": "Email and password are required"},
+                {"error": "Please provide both email and password"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -227,7 +236,7 @@ def login_user(request):
 
         if not user:
             return Response(
-                {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
+                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
         # Verify password
@@ -236,18 +245,25 @@ def login_user(request):
                 {"error": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # Convert ObjectId to string for JSON serialization
-        user["_id"] = str(user["_id"])
-        # Set user type
-        user["user_type"] = user_type
+        # Generate token
+        token = generate_token(user)
 
-        return Response(user)
+        # Return user info and token
+        return Response(
+            {
+                "token": token,
+                "user": {
+                    "id": str(user["_id"]),
+                    "email": user["email"],
+                    "name": user["name"],
+                    "user_type": user_type,
+                },
+            }
+        )
 
     except Exception as e:
         logger.error(f"Error in login: {str(e)}", exc_info=True)
-        return Response(
-            {"error": "Login failed"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(["POST"])
@@ -881,7 +897,9 @@ def job_overview(request):
             query["status"] = status_filter
 
         # Fetch filtered jobs and sort by pinned status
-        jobs = list(jobs_collection.find(query).sort([("pinned", -1)]))  # -1 for descending order
+        jobs = list(
+            jobs_collection.find(query).sort([("pinned", -1)])
+        )  # -1 for descending order
 
         # Process jobs for response
         for job in jobs:
@@ -896,4 +914,286 @@ def job_overview(request):
         return Response(jobs)
     except Exception as e:
         logger.error(f"Error in job_overview: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["POST"])
+def login_view(request):
+    email = request.data.get("email")
+    password = request.data.get("password")
+
+    try:
+        user = CustomUser.objects.get(email=email)
+        if user.check_password(password):
+            token = generate_token(user)  # Your token generation function
+            return Response(
+                {
+                    "token": token,
+                    "user": {
+                        "id": user.id,
+                        "email": user.email,
+                        "name": user.name,
+                        "user_type": user.user_type,
+                        # Don't include password or sensitive data
+                    },
+                }
+            )
+        else:
+            return Response({"error": "Invalid credentials"}, status=400)
+    except CustomUser.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
+
+
+@api_view(["GET"])
+def verify_token(request):
+    try:
+        # Get token from request
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return Response(
+                {"error": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        token = auth_header.split(" ")[1]
+
+        try:
+            # Verify token
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            user_id = payload.get("user_id")
+
+            if not user_id:
+                return Response(
+                    {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            # Get user from MongoDB
+            user = users_collection.find_one({"_id": ObjectId(user_id)})
+            if not user:
+                return Response(
+                    {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+
+            return Response(
+                {
+                    "user": {
+                        "id": str(user["_id"]),
+                        "email": user["email"],
+                        "name": user["name"],
+                        "user_type": user["user_type"],
+                    }
+                }
+            )
+
+        except jwt.ExpiredSignatureError:
+            return Response(
+                {"error": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+        except jwt.InvalidTokenError:
+            return Response(
+                {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+    except Exception as e:
+        logger.error(f"Error verifying token: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# Add this function to generate JWT token
+def generate_token(user):
+    payload = {
+        "user_id": str(user["_id"]),
+        "email": user["email"],
+        "exp": datetime.utcnow() + timedelta(days=1),
+        "iat": datetime.utcnow(),
+    }
+    return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+
+
+@api_view(["POST"])
+@permission_classes([IsMongoDBAdmin])
+def add_study_material(request):
+    try:
+        content = json.loads(request.data.get("content", "{}"))
+
+        # Handle file upload
+        if "file" in request.FILES:
+            file = request.FILES["file"]
+            # Generate unique filename
+            filename = f"{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{file.name}"
+            # Save file
+            path = default_storage.save(
+                f"study_materials/{filename}", ContentFile(file.read())
+            )
+            # Get the URL
+            file_url = default_storage.url(path)
+            content["file"] = file_url
+
+        data = {
+            "title": request.data.get("title"),
+            "category": request.data.get("category"),
+            "content": content,
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow(),
+        }
+
+        if not any(content.values()):
+            return Response(
+                {"error": "At least one type of content must be provided"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        result = study_materials_collection.insert_one(data)
+        data["_id"] = str(result.inserted_id)
+
+        return Response(data, status=status.HTTP_201_CREATED)
+    except Exception as e:
+        logger.error(f"Error adding study material: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+def get_study_materials(request):
+    try:
+        # Get token from request
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return Response(
+                {"error": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        token = auth_header.split(" ")[1]
+
+        try:
+            # Verify token
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            user_id = payload.get("user_id")
+
+            if not user_id:
+                return Response(
+                    {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            # Get category filter
+            category = request.query_params.get("category", "all")
+            query = {} if category == "all" else {"category": category}
+
+            # Get materials
+            materials = list(
+                study_materials_collection.find(query).sort("created_at", -1)
+            )
+            for material in materials:
+                material["_id"] = str(material["_id"])
+
+            return Response(materials)
+
+        except jwt.ExpiredSignatureError:
+            return Response(
+                {"error": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+        except jwt.InvalidTokenError:
+            return Response(
+                {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+    except Exception as e:
+        logger.error(f"Error fetching study materials: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+def get_study_material_detail(request, pk):
+    try:
+        # Similar token verification as above
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return Response(
+                {"error": "No token provided"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        token = auth_header.split(" ")[1]
+
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
+            user_id = payload.get("user_id")
+
+            if not user_id:
+                return Response(
+                    {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            material = study_materials_collection.find_one({"_id": ObjectId(pk)})
+            if not material:
+                return Response(
+                    {"error": "Material not found"}, status=status.HTTP_404_NOT_FOUND
+                )
+
+            material["_id"] = str(material["_id"])
+            return Response(material)
+
+        except jwt.ExpiredSignatureError:
+            return Response(
+                {"error": "Token has expired"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+        except jwt.InvalidTokenError:
+            return Response(
+                {"error": "Invalid token"}, status=status.HTTP_401_UNAUTHORIZED
+            )
+
+    except Exception as e:
+        logger.error(f"Error fetching study material: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["GET"])
+@permission_classes([IsMongoDBAdmin])
+def admin_get_study_materials(request):
+    try:
+        materials = list(study_materials_collection.find().sort("created_at", -1))
+        for material in materials:
+            material["_id"] = str(material["_id"])
+        return Response(materials)
+    except Exception as e:
+        logger.error(f"Error fetching study materials: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["PUT"])
+@permission_classes([IsMongoDBAdmin])
+def update_study_material(request, pk):
+    try:
+        data = {
+            "title": request.data.get("title"),
+            "category": request.data.get("category"),
+            "content": request.data.get("content"),
+            "updated_at": datetime.utcnow(),
+        }
+
+        result = study_materials_collection.update_one(
+            {"_id": ObjectId(pk)}, {"$set": data}
+        )
+
+        if result.modified_count == 0:
+            return Response(
+                {"error": "Study material not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        data["_id"] = pk
+        return Response(data)
+    except Exception as e:
+        logger.error(f"Error updating study material: {str(e)}")
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsMongoDBAdmin])
+def delete_study_material(request, pk):
+    try:
+        result = study_materials_collection.delete_one({"_id": ObjectId(pk)})
+        if result.deleted_count == 0:
+            return Response(
+                {"error": "Study material not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    except Exception as e:
+        logger.error(f"Error deleting study material: {str(e)}")
         return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

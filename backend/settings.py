@@ -13,4 +13,10 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "harishrajd6@gmail.com"
 EMAIL_HOST_PASSWORD = "flpz mbcb kwma qnxt"
 
-# Add 'rest_framework' to INSTALLED_APPS
+# Add to your existing settings
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'users.authentication.JWTAuthentication',
+    ],
+}
+

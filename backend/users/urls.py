@@ -16,4 +16,27 @@ urlpatterns = [
     path("saved-jobs/<str:user_id>/", views.get_saved_jobs, name="get-saved-jobs"),
     path("save-job/<str:pk>/", views.save_job, name="save-job"),
     path("unsave-job/<str:pk>/", views.unsave_job, name="unsave-job"),
+    path("verify-token/", views.verify_token, name="verify-token"),
+    path("study-materials/", views.get_study_materials, name="get-study-materials"),
+    path("study-materials/add/", views.add_study_material, name="add-study-material"),
+    path(
+        "study-materials/<str:pk>/",
+        views.get_study_material_detail,
+        name="get-study-material-detail",
+    ),
+    path(
+        "admin/study-materials/",
+        views.admin_get_study_materials,
+        name="admin-study-materials",
+    ),
+    path(
+        "study-materials/<str:pk>/update/",
+        views.update_study_material,
+        name="update-study-material",
+    ),
+    path(
+        "study-materials/<str:pk>/delete/",
+        views.delete_study_material,
+        name="delete-study-material",
+    ),
 ]

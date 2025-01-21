@@ -1,53 +1,138 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
-import Login from "./components/Login";
-import Signup from "./components/Signup";
-import AdminSignup from "./components/AdminSignup";
-import AdminHome from "./components/AdminHome";
-import UserHome from "./components/UserHome";
-import ForgotPassword from "./components/ForgotPassword";
-import ResetPassword from "./components/ResetPassword";
-import Profile from "./components/Profile";
-import { AppBar, Toolbar, Button, Container, Box } from "@mui/material";
-import ErrorBoundary from "./components/ErrorBoundary";
-import SavedJobs from "./components/SavedJobs";
-import JobDetails from "./components/JobDetails";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Box, Container } from "@mui/material";
+
+// Auth Pages
+import Login from "./pages/auth/Login";
+import Signup from "./pages/auth/Signup";
+import ForgotPassword from "./pages/auth/ForgotPassword";
+import ResetPassword from "./pages/auth/ResetPassword";
+
+// Admin Pages
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminProfile from "./pages/admin/AdminProfile";
+
+// User Pages
+import UserDashboard from "./pages/user/UserDashboard";
+import SavedJobs from "./pages/user/SavedJobs";
+import JobDetails from "./pages/user/JobDetails";
+import UserProfile from "./pages/user/UserProfile";
+import StudyMaterial from "./pages/user/StudyMaterial";
+import MNCMaterials from "./pages/user/study-materials/MNCMaterials";
+import StateMaterials from "./pages/user/study-materials/StateMaterials";
+import CentralMaterials from "./pages/user/study-materials/CentralMaterials";
+import OtherMaterials from "./pages/user/study-materials/OtherMaterials";
+
+// Components
+import ProtectedRoute from "./components/common/ProtectedRoute";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 
 function App() {
-  // Get current path
-  const path = window.location.pathname;
-  const showNavBar = !["/user-home", "/admin-home", "/profile"].includes(path);
-
   return (
     <ErrorBoundary>
       <Router>
-        <Box sx={{ flexGrow: 1 }}>
-          {showNavBar && (
-            <AppBar position="static">
-              <Toolbar>
-                <Button color="inherit" component={Link} to="/login">
-                  Login
-                </Button>
-                <Button color="inherit" component={Link} to="/signup">
-                  Sign Up
-                </Button>
-              </Toolbar>
-            </AppBar>
-          )}
-
-          <Container>
+        <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+          <Container maxWidth={false} disableGutters>
             <Routes>
+              {/* Auth Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/admin-home" element={<AdminHome />} />
-              <Route path="/admin-signup" element={<AdminSignup />} />
-              <Route path="/user-home" element={<UserHome />} />
-              <Route path="/" element={<Login />} />
               <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/saved-jobs" element={<SavedJobs />} />
-              <Route path="/jobs/:id" element={<JobDetails />} />
+
+              {/* Admin Routes */}
+              <Route
+                path="/admin-home"
+                element={
+                  <ProtectedRoute userType="admin">
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin/profile"
+                element={
+                  <ProtectedRoute userType="admin">
+                    <AdminProfile />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* User Routes */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute userType="user">
+                    <UserDashboard />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/saved-jobs"
+                element={
+                  <ProtectedRoute userType="user">
+                    <SavedJobs />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/jobs/:id"
+                element={
+                  <ProtectedRoute userType="user">
+                    <JobDetails />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/user/profile"
+                element={
+                  <ProtectedRoute userType="user">
+                    <UserProfile />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Study Material Routes */}
+              <Route
+                path="/study-materials"
+                element={
+                  <ProtectedRoute userType="user">
+                    <StudyMaterial />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/study-materials/mnc"
+                element={
+                  <ProtectedRoute userType="user">
+                    <MNCMaterials />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/study-materials/state"
+                element={
+                  <ProtectedRoute userType="user">
+                    <StateMaterials />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/study-materials/central"
+                element={
+                  <ProtectedRoute userType="user">
+                    <CentralMaterials />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/study-materials/others"
+                element={
+                  <ProtectedRoute userType="user">
+                    <OtherMaterials />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </Container>
         </Box>

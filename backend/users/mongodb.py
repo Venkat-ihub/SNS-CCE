@@ -24,10 +24,15 @@ try:
     db = client["CCE"]
     users_collection = db["users"]
     admins_collection = db["admins"]
+    jobs_collection = db["jobs"]
+    study_materials_collection = db["study_materials"]
 
     # Create indexes for email (unique) for both collections
     users_collection.create_index("email", unique=True)
     admins_collection.create_index("email", unique=True)
+
+    # Create indexes for study materials
+    study_materials_collection.create_index([("category", 1)])
 
 except Exception as e:
     logger.error("Error connecting to MongoDB Atlas: %s", str(e), exc_info=True)
