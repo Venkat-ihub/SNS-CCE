@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 try:
     # MongoDB Atlas URI
-    uri = "mongodb+srv://prakashbalan555:aicourse@ai-course.si9g6.mongodb.net/"
+    uri = ""
     
     logger.info("Attempting to connect to MongoDB Atlas...")
     
